@@ -1,0 +1,8 @@
+pandas
+geopandas
+folium
+matplotlib
+pysal
+segregation
+rioxarray
+

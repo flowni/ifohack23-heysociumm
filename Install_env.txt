@@ -1,0 +1,32 @@
+# Creating environment
+conda config --add channels conda-forge
+conda create --name ifohack_spatial_py310_small_v1 python=3.10
+activate ifohack_spatial_py310_small_v1
+
+# Basic libraries
+conda install numpy=1.23.5 pandas=2.0.0 -y
+conda install jupyterlab -c conda-forge -y
+pip install notebook -y
+# Basic spatial libraries
+conda install gdal pyproj -y
+conda install geopandas=0.12.2 -y
+conda install scipy -y
+# Working with raster data
+pip install rasterstats -y
+# Working with networks
+pip install networkx -y
+pip install osmnx -y
+# Segregation
+conda install scipy pysal -y
+conda install segregation -c conda-forge -y
+  
+# Plotting 
+conda install matplotlib seaborn -y
+pip install bokeh -y
+# Machine Learning
+condas install scikit-learn -y
+conda install -c conda-forge mgwr -y
+conda install -c conda-forge mlflow -y
+conda install segregation -y
+
+conda install 

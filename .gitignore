@@ -1,0 +1,5 @@
+# ignore OS
+.DS_Store
+
+# ignore data
+ifoHack_DLR_Challenge_Data/
