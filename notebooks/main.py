@@ -68,9 +68,8 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
     geo_df_copy = geo_df.copy()
 
     label = map_feature
-
-    print(geo_df_copy.head())
-    feat_series = df[label]
+    geo_df_copy.dropna(inplace=True)
+    feat_series = geo_df_copy[label]
     feat_type = None
 
     if feat_series.dtype == 'object':
@@ -92,20 +91,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
         geo_df_copy['fill_color'] = colors
         geo_df_copy.fillna(0, inplace=True)
         geo_df_copy = geo_df_copy.astype({label: 'float64'})
-    # view_state = pdk.ViewState(
-    #         latitude=geo_df_copy['geometry'].centroid.y[0], longitude=geo_df_copy['geometry'].centroid.x[0],
-    #            zoom=5, maxZoom=16)
-    def compute_view(polygons):
-        bounds = np.array([list(p.bounds) for p in polygons])
-        min_lon, min_lat = bounds[:, 0].astype(float).min(), bounds[:, 1].astype(float).min()
-        max_lon, max_lat = bounds[:, 2].astype(float).max(), bounds[:, 3].astype(float).max()
-        center_lon, center_lat = (min_lon + max_lon) / 2, (min_lat + max_lat) / 2
-        zoom = 10
-        return pdk.ViewState(
-            latitude=center_lat,
-            longitude=center_lon,
-            zoom=zoom
-        )
     def compute_view2(polygons):
         bounds = np.array([list(p.bounds) for p in polygons])
         min_lon, min_lat = bounds[:, 0].astype(float).min(), bounds[:, 1].astype(float).min()
@@ -121,118 +106,13 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
         }
     geo_df_copy = geo_df_copy.set_crs(epsg=3035, allow_override=True)
     geo_df_copy = geo_df_copy.to_crs(epsg=4326)    
-    view_state = compute_view(
-    geo_df_copy.geometry,  # explode the geometry column to obtain all the polygons
-    )
-    view_state = compute_view(geo_df_copy.geometry)
-    view_state = pdk.ViewState(
-        latitude=53.084755,
-        longitude=8.82079,
-        zoom=10
-    )
     tooltip = {"html": ""}
     geo_df_copy = geo_df_copy.to_crs(epsg=4326)
     print(geo_df_copy.columns)
-    # polygon_layer = pdk.Layer(
-    #     "PolygonLayer",
-    #     geo_df_copy[['geometry']],
-    #     get_polygon="geometry.coordinates",
-    #     filled=True,
-    #     stroked=True,
-    #     get_fill_color=[255, 255, 0],
-    #     opacity=1,
-    #     pickable=True,
-    #     auto_highlight=True
-    # )
-    # layers = [polygon_layer]
-    # if show_transit:
-    #     transit_layers = make_transit_layers(tract_df=df, pickable=False)
-    #     layers += transit_layers
-    # r = pdk.Deck(
-    #     layers=layers,
-    #     initial_view_state=view_state,
-    #     map_style=pdk.map_styles.LIGHT,
-    #     tooltip=tooltip
-    # )
-    # st.pydeck_chart(r)
     m = folium.Map(**compute_view2(geo_df_copy.geometry))
     geo_df_copy.explore(m=m, name="Neighborhoods", color="red", column=map_feature, tooltip=[map_feature, 'Euros per square meter', 'Neighborhood ID'])
     folium.LayerControl().add_to(m)
     folium_static(m)
-
-def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
-    tracts = tract_df['Census Tract'].to_list()
-    tracts_str = str(tuple(tracts)).replace(',)', ')')
-
-    NTM_shapes = queries.get_transit_shapes_geoms(
-        columns=['route_desc', 'route_type_text', 'length', 'geom', 'tract_id', 'route_long_name'],
-        where=f" tract_id IN {tracts_str}")
-
-    tolerance = 0.0000750
-    NTM_shapes['geom'] = NTM_shapes['geom'].apply(lambda x: x.simplify(tolerance, preserve_topology=False))
-
-    NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'],
-                                                where=f" tract_id IN {tracts_str}")
-
-    NTM_shapes.drop_duplicates(subset=['geom'])
-    NTM_stops.drop_duplicates(subset=['geom'])
-
-    if NTM_shapes.empty:
-        st.write("Transit lines have not been identified for Equity Geographies in this region.")
-        line_layer = None
-    else:
-        NTM_shapes['path'] = NTM_shapes['geom'].apply(utils.coord_extractor)
-        NTM_shapes.fillna("N/A", inplace=True)
-
-        route_colors = {}
-        for count, value in enumerate(NTM_shapes['route_type_text'].unique()):
-            route_colors[value] = COLOR_VALUES[count]
-        NTM_shapes['color'] = NTM_shapes['route_type_text'].apply(lambda x: route_colors[x])
-        NTM_shapes['alt_color'] = NTM_shapes['color'].apply(lambda x: "#%02x%02x%02x" % (x[0], x[1], x[2]))
-
-        # REMOVED LEGEND BECAUSE IT LOOKED BUSY
-        # bar = alt.Chart(
-        #     NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
-        #     y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
-        #     # column=alt.Column('count(length):Q', title=None, bin=None), 
-        #     x=alt.X('tract_id:N', title='Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
-        #     color=alt.Color('alt_color', scale=None),
-        #     tooltip=['tract_id']) \
-        #     .interactive()
-
-        # st.altair_chart(bar, use_container_width=True)
-
-        line_layer = pdk.Layer(
-            "PathLayer",
-            NTM_shapes,
-            get_color='color',
-            get_width=12,
-            # highlight_color=[176, 203, 156],
-            picking_radius=6,
-            auto_highlight=pickable,
-            pickable=pickable,
-            width_min_pixels=2,
-            get_path="path"
-        )
-
-    if NTM_stops.empty:
-        st.write("Transit stops have not been identified for Equity Geographies in this region.")
-        stop_layer = None
-    else:
-        stop_layer = pdk.Layer(
-            'ScatterplotLayer',
-            NTM_stops,
-            get_position=['stop_lon', 'stop_lat'],
-            auto_highlight=pickable,
-            pickable=False,
-            get_radius=36,
-            get_fill_color=[255, 140, 0],
-        )
-
-    return [
-        line_layer,
-        stop_layer
-    ]
 
 def run_UI():
     st.title("Data Explorer")
