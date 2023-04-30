@@ -15,12 +15,22 @@ from streamlit_folium import folium_static, st_folium
 from pysal.lib import weights  
 import segregation as seg
 import pydeck as pdk
+import xgboost as xgb
 import altair as alt
+import shap
+from streamlit_shap import st_shap
 
 
 # Load the data for Cologne
 filtered_zensus_data = gpd.read_file('../data_example/bremen_merged_data.gpkg')
 zensus_data_by_neighborhood_grouped = filtered_zensus_data
+predictor_model = xgb.XGBRegressor()
+predictor_model.load_model("xgboost_model.json")
+explainer = shap.Explainer(predictor_model)
+X_data = zensus_data_by_neighborhood_grouped.drop(columns=['geometry', 'Area Type', 'Euros per square meter', 'Neighborhood Name'])
+X_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+X_data.dropna()
+shap_values = explainer(X_data)
 
 COLOR_RANGE = [
     [65, 182, 196],
@@ -169,6 +179,19 @@ def make_chart(df: pd.DataFrame, feature: str, data_format: str = 'Raw Values'):
     st.altair_chart(chart, use_container_width=True)
     st.write("Correlation coefficient:", corr_coef)
 
+def feature_exploration_charts():
+    st.write('''
+            ### Global feature importance
+            Here you can see the most important features that contribute to the housing price, according to our prediction model.
+            ''')
+
+    st_shap(shap.plots.beeswarm(shap_values))
+
+def feature_comparison_charts(feature_x: str, feature_color: str):
+    print(shap_values[:,feature_x])
+    st_shap(shap.plots.scatter(shap_values[:,feature_x], color=shap_values[:,feature_color]))
+    
+
 def county_data_explorer():
     df = zensus_data_by_neighborhood_grouped
     if df is not None:
@@ -176,7 +199,7 @@ def county_data_explorer():
         temp = df.copy()
         temp.reset_index(inplace=True)
         feature_labels = list(
-            set(temp.columns) - {'County Name', 'State', 'county_id', 'state_id', 'pop10_sqmi', 'pop2010','fips','cnty_fips','state_fips'})
+            set(temp.columns) - {'Area Type', 'Euros per square meter', 'geometry', 'index', 'Neighborhood ID'})
         feature_labels.sort()
         single_feature = st.selectbox('Feature', feature_labels, 0)
         make_map(temp, temp, single_feature)
@@ -191,11 +214,12 @@ def county_data_explorer():
             feature_1 = st.selectbox('X Feature', feature_labels, 0)
         with col2:
             feature_2 = st.selectbox('Y Feature', feature_labels, 1)
-        with col3:
-            scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels) - 1)
         #if feature_1 and feature_2 and scaling_feature:
         #    visualization.make_scatter_plot_counties(temp, feature_1, feature_2, scaling_feature, st.session_state.data_format)
         #temp.drop(['State', 'County Name', 'county_id'], inplace=True, axis=1)
         #visualization.make_correlation_plot(temp, feature_labels)
+        feature_comparison_charts(feature_1, feature_2)
+        feature_exploration_charts()
+
 if __name__ == '__main__':
     run_UI()
