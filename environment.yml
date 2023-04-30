@@ -1,4 +1,0 @@
-name: my_env
-channels:
-  - defaults
-prefix: C:\Users\MorrisKurz\anaconda3\envs\ifohack_spatial_py310\envs\my_env
