@@ -14,4 +14,4 @@ pydeck
 streamlit_shap
 shap
 folium
-sklearn
+scikit-learn
