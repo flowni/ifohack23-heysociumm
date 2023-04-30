@@ -3,3 +3,5 @@
 
 # ignore data
 ifoHack_DLR_Challenge_Data/
+
+__pycache__

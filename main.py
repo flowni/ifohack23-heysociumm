@@ -12,7 +12,7 @@ from constants import *
 from data_explorer import *
 
 # Load the data for Cologne
-zensus_data_by_neighborhood_grouped = gpd.read_file('../data_example/bremen_merged_data.gpkg')
+zensus_data_by_neighborhood_grouped = gpd.read_file('data/bremen_merged_data.gpkg')
 # Load the predictor model
 predictor_model = xgb.XGBRegressor()
 predictor_model.load_model("xgboost_model.json")
