@@ -115,7 +115,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
     folium_static(m)
 
 def run_UI():
-    st.title("Data Explorer")
+    st.title("What determines the land prices in Bremen?")
     subcol_1, subcol_2 = st.columns(2)
     with subcol_1:
         st.session_state.data_type = st.radio("Data resolution:", ('County Level', 'Census Tracts'), index=0)
